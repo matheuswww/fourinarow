@@ -7,11 +7,20 @@ type Message struct {
 }
 
 type Request struct {
-	Play  []int	`json:"play"`
+	Play [2]int	`json:"play"`
 }
 
-type Room struct {
+type Response struct {
+	Matrix [6][7]int `json:"matrix"`
+}
+
+type User struct {
 	conn *websocket.Conn
 	play bool
 	userId string
+}
+
+type Room struct {
+	user [2]*User
+	matrix [6][7]int
 }

@@ -16,7 +16,7 @@ import (
 )
 
 
-var rooms = make(map[string][2]*Room)
+var rooms = make(map[string]*Room)
 
 func RoomConn(c *gin.Context) {
 	var upgrader = websocket.Upgrader {
@@ -54,7 +54,7 @@ func RoomConn(c *gin.Context) {
 	}
 	roomId := c.Request.URL.Query().Get("id")
 	if roomId == "" {
-		roomId := uuid.NewString()
+		roomId = uuid.NewString()
 		err = createRoom(conn, user.UserId, roomId)
 	} else if c.Request.URL.Query().Get("rejoin") == "true" {
 		err = rejoinRoom(conn, roomId, user.UserId)
@@ -64,12 +64,12 @@ func RoomConn(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	handleRoom(conn, roomId)
+	handleRoom(conn, roomId, user.UserId)
 }
 
 func rejoinRoom(conn *websocket.Conn, roomId string, userId string) error {
 	r,ok := rooms[roomId]
-	if !ok || (r[0].conn != nil && r[1].conn != nil) {
+	if !ok || (r.user[0] == nil || r.user[1] == nil) {
 		msg := "Room not found"
 		log.Println(msg)
 		conn.WriteJSON(Message{ msg })
@@ -78,18 +78,18 @@ func rejoinRoom(conn *websocket.Conn, roomId string, userId string) error {
 	}
 	var found = false
 	var timeToPlay string
-	if r[0].userId == userId {
-		if r[0].play {
-			timeToPlay = r[0].userId
+	if r.user[0].userId == userId {
+		if r.user[0].play {
+			timeToPlay = r.user[0].userId
 		}
-		r[0].conn = conn
+		r.user[0].conn = conn
 		found = true
 	}
-	if r[1].userId == userId {
-		if r[1].play {
-			timeToPlay = r[1].userId
+	if r.user[1].userId == userId {
+		if r.user[1].play {
+			timeToPlay = r.user[1].userId
 		}
-		r[1].conn = conn
+		r.user[1].conn = conn
 		found = true
 	}
 	if !found {
@@ -99,15 +99,17 @@ func rejoinRoom(conn *websocket.Conn, roomId string, userId string) error {
 		conn.Close()
 		return errors.New(msg)
 	}
-	msg := fmt.Sprintf("time to play: %s", timeToPlay)
+	msg := Response{ rooms[roomId].matrix }
 	sendMessage(roomId, msg, msg)
+	msg2 := Message{ fmt.Sprintf("time to play: %s", timeToPlay) }
+	sendMessage(roomId, msg2, msg2)
 	log.Println("Rejoin id: ", roomId)
 	return nil
 }
 
 func joinRoom(conn *websocket.Conn, roomId string, userId string) error {
 	r,ok := rooms[roomId]
-	if !ok || (r[0] != nil && r[1] != nil) {
+	if !ok || (r.user[0] != nil && r.user[1] != nil) {
 		var msg string
 		if !ok {
 			msg = "Room not found"
@@ -119,37 +121,41 @@ func joinRoom(conn *websocket.Conn, roomId string, userId string) error {
 		conn.Close()
 		return errors.New(msg)
 	}
-	if rooms[roomId][0].userId == userId {
+	if rooms[roomId].user[0].userId == userId {
 		msg := "It is not possible for the same user to be in a room"
 		log.Println(msg)
 		conn.WriteJSON(Message{ msg })
 		conn.Close()
 		return errors.New(msg)
 	}
-	room := &Room{
+	user := &User{
 		conn: conn,
 		play: false,
 		userId: userId,
 	}
-	r[1] = room
+	r.user[1] = user
 	rooms[roomId] = r
 	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	num := rd.Intn(2) + 1
-	r[num - 1].play = true
-	timeToPlay := r[num - 1].userId
-	msg := fmt.Sprintf("time to play: %s", timeToPlay)
+	r.user[num - 1].play = true
+	timeToPlay := r.user[num - 1].userId
+	msg := Message{ fmt.Sprintf("time to play: %s", timeToPlay) }
 	sendMessage(roomId, msg, msg)
 	log.Println("JoinRoom id: ", roomId)
 	return nil
 }
 
 func createRoom(conn *websocket.Conn, userId, roomId string) error {
-	room := &Room{
+	user := &User{
 		conn: conn,
 		play: false,
 		userId: userId,
 	}
-	rooms[roomId] = [2]*Room{room}
+	room := &Room{
+		matrix: [6][7]int{},
+		user: [2]*User{user},
+	}
+	rooms[roomId] = room
 	err := conn.WriteJSON(struct{ 
 		Room string `json:"room"`
 	}{ roomId })
