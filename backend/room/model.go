@@ -1,6 +1,8 @@
 package room
 
-import "github.com/gorilla/websocket"
+import (
+	"github.com/gorilla/websocket"
+)
 
 type Message struct {
 	Message string `json:"message"`
@@ -16,11 +18,13 @@ type Response struct {
 
 type User struct {
 	conn *websocket.Conn
-	play bool
 	userId string
+	exit chan bool
 }
 
 type Room struct {
 	user [2]*User
+	play int
 	matrix [6][7]int
+	timer chan bool
 }

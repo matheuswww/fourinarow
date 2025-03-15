@@ -79,17 +79,21 @@ func rejoinRoom(conn *websocket.Conn, roomId string, userId string) error {
 	var found = false
 	var timeToPlay string
 	if r.user[0].userId == userId {
-		if r.user[0].play {
+		if r.play == 1 {
 			timeToPlay = r.user[0].userId
 		}
 		r.user[0].conn = conn
+		r.user[0].exit <- false
+		close(r.user[0].exit)
 		found = true
 	}
 	if r.user[1].userId == userId {
-		if r.user[1].play {
+		if r.play == 2 {
 			timeToPlay = r.user[1].userId
 		}
 		r.user[1].conn = conn
+		r.user[1].exit <- false
+		close(r.user[1].exit)
 		found = true
 	}
 	if !found {
@@ -130,17 +134,18 @@ func joinRoom(conn *websocket.Conn, roomId string, userId string) error {
 	}
 	user := &User{
 		conn: conn,
-		play: false,
 		userId: userId,
+		exit: nil,
 	}
 	r.user[1] = user
-	rooms[roomId] = r
 	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	num := rd.Intn(2) + 1
-	r.user[num - 1].play = true
+	r.play = num
+	rooms[roomId] = r
 	timeToPlay := r.user[num - 1].userId
 	msg := Message{ fmt.Sprintf("time to play: %s", timeToPlay) }
 	sendMessage(roomId, msg, msg)
+	go handleTimerStart(roomId)
 	log.Println("JoinRoom id: ", roomId)
 	return nil
 }
@@ -148,12 +153,13 @@ func joinRoom(conn *websocket.Conn, roomId string, userId string) error {
 func createRoom(conn *websocket.Conn, userId, roomId string) error {
 	user := &User{
 		conn: conn,
-		play: false,
 		userId: userId,
 	}
+	timer := make(chan bool)
 	room := &Room{
 		matrix: [6][7]int{},
 		user: [2]*User{user},
+		timer: timer,
 	}
 	rooms[roomId] = room
 	err := conn.WriteJSON(struct{ 
