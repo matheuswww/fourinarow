@@ -30,33 +30,33 @@ func sendMessage(roomId string, msg1, msg2 any) {
 	}
 }
 
-func handleRoom(conn *websocket.Conn, roomdId, userId string) {
-	room := rooms[roomdId]
+func handleRoom(conn *websocket.Conn, roomId, userId string) {
+	room := rooms[roomId]
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 				if room.user[0] != nil && room.user[0].conn != nil && room.user[1] != nil && room.user[1].conn != nil {
 					if room.user[0].userId == userId {
-						msg := room_response.Messages[1001]
-						sendMessage(roomdId, "", msg)
+						msg := fmt.Sprintf(room_response.Messages[1001], room.user[0].userId)
+						sendMessage(roomId, "", msg)
 						room.user[0].conn = nil
 						room.user[0].exit = make(chan bool)
-						handleTimeExit(room.user[0])
+						handleTimeExit(room.user[0], room.user[1], roomId)
 					}
 					if room.user[1].userId == userId {
-						msg := room_response.Messages[1001]
-						sendMessage(roomdId, msg, "")
+						msg := fmt.Sprintf(room_response.Messages[1001], room.user[1].userId)
+						sendMessage(roomId, msg, "")
 						room.user[1].conn = nil
 						room.user[1].exit = make(chan bool)
-						handleTimeExit(room.user[1])
+						handleTimeExit(room.user[1], room.user[0], roomId)
 					}
 					break
 				}
-				rooms[roomdId].timer <- false
-				close(rooms[roomdId].timer)
-				delete(rooms, roomdId)
-				log.Println("Room closed")
+				rooms[roomId].timer <- false
+				close(rooms[roomId].timer)
+				delete(rooms, roomId)
+				log.Println(fmt.Sprintf("Room closed: %s", roomId))
 				break
 			}
 			log.Println("Error trying to read message: ", err)
@@ -71,38 +71,42 @@ func handleRoom(conn *websocket.Conn, roomdId, userId string) {
 		player := 0
 		if room.user[0] != nil && room.user[1] != nil && !room.finished {
 			if room.user[0].userId == userId {
-				if rooms[roomdId].matrix[play.Play[0]][play.Play[1]] == 2 || rooms[roomdId].play != 1 {
-					msg := room_response.Message{ Message: room_response.Messages[1010] }
-					sendMessage(roomdId, msg, msg)
+				player = 1
+				if !handlePlay(roomId, play.Play, player, player + 1) {
 					continue
 				}
-				player = 1
-				rooms[roomdId].matrix[play.Play[0]][play.Play[1]] = 1
-				rooms[roomdId].play = 2
 			}
 			if room.user[1].userId == userId {
-				if rooms[roomdId].matrix[play.Play[0]][play.Play[1]] == 1 || rooms[roomdId].play != 2 {
-					msg := room_response.Message{ Message: room_response.Messages[1010] }
-					sendMessage(roomdId, msg, msg)
+				player = 2
+				if !handlePlay(roomId, play.Play, player, player - 1) {
 					continue
 				}
-				player = 2
-				rooms[roomdId].matrix[play.Play[0]][play.Play[1]] = 2
-				rooms[roomdId].play = 1
 			}
 			t := true
 			res := handleMatrix(room.matrix, play.Play, player)
 			if res {
 				room.finished = true
 				msg := room_response.Message{ Message: fmt.Sprintf(room_response.Messages[1002], room.user[player - 1].userId) }
-				sendMessage(roomdId, msg, msg)
+				sendMessage(roomId, msg, msg)
+				log.Println(fmt.Sprintf("Winner: %s, room id: %s", room.user[player - 1].userId, roomId))
 				t = false
 			}
-			msg := room_response.Matrix{ Matrix: rooms[roomdId].matrix }
-			sendMessage(roomdId, msg, msg)
-			go func() { rooms[roomdId].timer <- t }()
+			msg := room_response.Matrix{ Matrix: rooms[roomId].matrix }
+			sendMessage(roomId, msg, msg)
+			go func() { rooms[roomId].timer <- t }()
 		}
 	}
+}
+
+func handlePlay(roomId string, play [2]int, player, nextToPlay int) bool {
+	if (rooms[roomId].matrix[play[0]][play[1]] != 0 || rooms[roomId].play != player) || (play[0] > width - 1 || play[1] > height - 1) || (play[0] != width - 1 && rooms[roomId].matrix[play[0]+1][play[1]] == 0) {
+		msg := room_response.Message{ Message: room_response.Messages[1010] }
+		sendMessage(roomId, msg, msg)
+		return false
+	}
+	rooms[roomId].matrix[play[0]][play[1]] = player
+	rooms[roomId].play = nextToPlay
+	return true
 }
 
 func handleMatrix(matrix [6][7]int, play [2]int, player int) bool {

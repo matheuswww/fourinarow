@@ -1,12 +1,13 @@
 package room
 
 import (
+	"fmt"
 	"time"
 
 	room_response "github.com/matheuswww/fourinarow/room/response"
 )
 
-func handleTimeExit(user *User) {
+func handleTimeExit(user *User, user2 *User, roomId string) {
 	exit := false
 	var i int = 1
 	for !exit {
@@ -17,7 +18,11 @@ func handleTimeExit(user *User) {
 			if i >= timeExit*1000 {
 				user.userId = ""
 				exit = true
+				msg := room_response.Message{ Message: fmt.Sprintf(room_response.Messages[1002], user2.userId) }
+				sendMessage(roomId, msg, msg)
 			}
+			msg := fmt.Sprintf(room_response.Messages[1011], i/1000)
+			sendMessage(roomId, msg, msg)
 			time.Sleep(time.Millisecond)
 			i++
 		}
@@ -39,7 +44,7 @@ func handleTimer(roomdId string) {
 		default:
 			if i > timeToPlay*1000 {
 				i = 1
-				msg := room_response.Message{Message: "time expired"}
+				msg := room_response.Message{Message: room_response.Messages[1000]}
 				if rooms[roomdId].play == 1 {
 					sendMessage(roomdId, msg, "")
 					rooms[roomdId].play = 2
@@ -49,7 +54,8 @@ func handleTimer(roomdId string) {
 				}
 			} else {
 				if i%1000 == 0 {
-					sendMessage(roomdId, i/1000, i/1000)
+					msg := fmt.Sprintf(room_response.Messages[1012], i/1000)
+					sendMessage(roomdId, msg, msg)
 				}
 				time.Sleep(time.Millisecond)
 				i++
@@ -61,7 +67,8 @@ func handleTimer(roomdId string) {
 func handleTimerStart(roomId string) {
 	for i := timeStart; i > 0; i-- {
 		time.Sleep(time.Second)
-		sendMessage(roomId, i, i)
+		msg := fmt.Sprintf(room_response.Messages[1013], i)
+		sendMessage(roomId, msg, msg)
 	}
 	go handleTimer(roomId)
 }
