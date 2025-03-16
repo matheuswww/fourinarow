@@ -9,6 +9,10 @@ import (
 	"github.com/google/uuid"
 )
 
+type Token struct {
+	Token string `json:"token"`
+}
+
 func GetToken(c *gin.Context) {
 	user := User{
 		UserId: uuid.NewString(),

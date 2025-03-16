@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	jwt_service "github.com/matheuswww/fourinarow/jwt"
+	room_response "github.com/matheuswww/fourinarow/room/response"
 )
-
 
 var rooms = make(map[string]*Room)
 
@@ -33,22 +33,22 @@ func RoomConn(c *gin.Context) {
 	_, message, err := conn.ReadMessage()
 	if err != nil {
 		log.Println("Error trying ReadMessage")
-		conn.WriteJSON(Message{ "invalid fields" })
+		conn.WriteJSON(room_response.Message{ Message: room_response.Messages[1003] })
 		conn.Close()
 		return
 	}
-	var token struct{ Token string `json:"token"` }
+	var token jwt_service.Token
 	err = json.Unmarshal(message, &token)
 	if err != nil || token.Token == "" {
 		log.Println("Error trying Unmarshal")
-		conn.WriteJSON(Message{ "invalid fields" })
+		conn.WriteJSON(room_response.Message{ Message: room_response.Messages[1003] })
 		conn.Close()
 		return
 	}
 	user := jwt_service.ParseAccessToken(token.Token)
 	if user == nil {
-		log.Println("invalid token")
-		conn.WriteJSON(Message{ "invalid token" })
+		log.Println("Invalid token")
+		conn.WriteJSON(room_response.Message{ Message: room_response.Messages[1004]})
 		conn.Close()
 		return
 	}
@@ -67,12 +67,74 @@ func RoomConn(c *gin.Context) {
 	handleRoom(conn, roomId, user.UserId)
 }
 
+func createRoom(conn *websocket.Conn, userId, roomId string) error {
+	user := &User{
+		conn: conn,
+		userId: userId,
+	}
+	timer := make(chan bool)
+	room := &Room{
+		matrix: [6][7]int{},
+		user: [2]*User{user},
+		timer: timer,
+		finished: false,
+	}
+	rooms[roomId] = room
+	err := conn.WriteJSON(room_response.Message{ Message: fmt.Sprintf("Room_id: %s", roomId) })
+	if err != nil {
+		log.Println("Error trying WriteJson: ", err)
+		conn.Close()
+		return err
+	}
+	log.Println("Room id: ", roomId)
+	return nil
+}
+
+func joinRoom(conn *websocket.Conn, roomId string, userId string) error {
+	r,ok := rooms[roomId]
+	if !ok || (r.user[0] != nil && r.user[1] != nil) {
+		var msg string
+		if !ok {
+			msg = room_response.Messages[1007]
+		} else {
+			msg = "The room is full"
+		}
+		log.Println(msg)
+		conn.WriteJSON(room_response.Message{ Message: msg })
+		conn.Close()
+		return errors.New(msg)
+	}
+	if rooms[roomId].user[0].userId == userId {
+		msg := room_response.Messages[1005]
+		log.Println(msg)
+		conn.WriteJSON(room_response.Message{ Message: msg })
+		conn.Close()
+		return errors.New(msg)
+	}
+	user := &User{
+		conn: conn,
+		userId: userId,
+		exit: nil,
+	}
+	r.user[1] = user
+	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	num := rd.Intn(2) + 1
+	r.play = num
+	rooms[roomId] = r
+	timeToPlay := r.user[num - 1].userId
+	msg := room_response.Message{ Message: fmt.Sprintf(room_response.Messages[1008], timeToPlay) }
+	sendMessage(roomId, msg, msg)
+	go handleTimerStart(roomId)
+	log.Println("JoinRoom id: ", roomId)
+	return nil
+}
+
 func rejoinRoom(conn *websocket.Conn, roomId string, userId string) error {
 	r,ok := rooms[roomId]
 	if !ok || (r.user[0] == nil || r.user[1] == nil) {
-		msg := "Room not found"
+		msg := room_response.Messages[1007]
 		log.Println(msg)
-		conn.WriteJSON(Message{ msg })
+		conn.WriteJSON(room_response.Message{ Message: msg })
 		conn.Close()
 		return errors.New(msg)
 	}
@@ -97,79 +159,16 @@ func rejoinRoom(conn *websocket.Conn, roomId string, userId string) error {
 		found = true
 	}
 	if !found {
-		msg := "Room not found"
+		msg := room_response.Messages[1007]
 		log.Println(msg)
-		conn.WriteJSON(Message{ msg })
+		conn.WriteJSON(room_response.Message{ Message: msg })
 		conn.Close()
 		return errors.New(msg)
 	}
-	msg := Response{ rooms[roomId].matrix }
+	msg := room_response.Matrix{ Matrix: rooms[roomId].matrix }
 	sendMessage(roomId, msg, msg)
-	msg2 := Message{ fmt.Sprintf("time to play: %s", timeToPlay) }
+	msg2 := room_response.Message{ Message: fmt.Sprintf(room_response.Messages[1008], timeToPlay) }
 	sendMessage(roomId, msg2, msg2)
 	log.Println("Rejoin id: ", roomId)
-	return nil
-}
-
-func joinRoom(conn *websocket.Conn, roomId string, userId string) error {
-	r,ok := rooms[roomId]
-	if !ok || (r.user[0] != nil && r.user[1] != nil) {
-		var msg string
-		if !ok {
-			msg = "Room not found"
-		} else {
-			msg = "The room is full"
-		}
-		log.Println(msg)
-		conn.WriteJSON(Message{ msg })
-		conn.Close()
-		return errors.New(msg)
-	}
-	if rooms[roomId].user[0].userId == userId {
-		msg := "It is not possible for the same user to be in a room"
-		log.Println(msg)
-		conn.WriteJSON(Message{ msg })
-		conn.Close()
-		return errors.New(msg)
-	}
-	user := &User{
-		conn: conn,
-		userId: userId,
-		exit: nil,
-	}
-	r.user[1] = user
-	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	num := rd.Intn(2) + 1
-	r.play = num
-	rooms[roomId] = r
-	timeToPlay := r.user[num - 1].userId
-	msg := Message{ fmt.Sprintf("time to play: %s", timeToPlay) }
-	sendMessage(roomId, msg, msg)
-	go handleTimerStart(roomId)
-	log.Println("JoinRoom id: ", roomId)
-	return nil
-}
-
-func createRoom(conn *websocket.Conn, userId, roomId string) error {
-	user := &User{
-		conn: conn,
-		userId: userId,
-	}
-	timer := make(chan bool)
-	room := &Room{
-		matrix: [6][7]int{},
-		user: [2]*User{user},
-		timer: timer,
-	}
-	rooms[roomId] = room
-	err := conn.WriteJSON(struct{ 
-		Room string `json:"room"`
-	}{ roomId })
-	if err != nil {
-		log.Println("Error trying WriteJson: ", err)
-		conn.Close()
-		return err
-	}
-	log.Println("Room id: ", roomId)
 	return nil
 }
