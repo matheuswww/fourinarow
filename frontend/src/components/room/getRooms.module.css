@@ -1,0 +1,61 @@
+.container {
+  padding: 20px;
+  text-align: center;
+}
+
+.createRoom {
+  margin-bottom: 20px;
+}
+
+.input {
+  padding: 10px;
+  margin-right: 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.button {
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.roomList {
+  margin-top: 30px;
+}
+
+.roomList ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.roomList li {
+  margin-bottom: 10px;
+}
+
+.connectButton {
+  padding: 5px 15px;
+  background-color: #008CBA;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.connectButton:hover {
+  background-color: #005f73;
+}
+
+.container h2 {
+  color: white;
+  margin-bottom: 10px;
+}
