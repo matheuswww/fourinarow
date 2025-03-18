@@ -16,4 +16,5 @@ type Room struct {
 	matrix [6][7]int
 	timer chan bool
 	finished bool
+	start bool
 }

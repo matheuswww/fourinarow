@@ -14,8 +14,9 @@ type Token struct {
 }
 
 func GetToken(c *gin.Context) {
+	userId := uuid.NewString()
 	user := User{
-		UserId: uuid.NewString(),
+		UserId: userId,
 		StandardClaims: jwt.StandardClaims{
 			Subject: "name",
 			IssuedAt: time.Now().Unix(),
@@ -23,5 +24,8 @@ func GetToken(c *gin.Context) {
 		},
 	}
 	token,_ := NewAccessToken(user)
-	c.JSON( http.StatusOK, struct{ Message string `json:"message"` }{ token })
+	c.JSON( http.StatusOK, struct{ 
+		Token  string `json:"token"` 
+		UserId string `json:"user_id"`	
+	}{ token,  userId})
 }

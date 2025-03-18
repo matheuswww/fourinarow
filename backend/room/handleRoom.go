@@ -38,14 +38,14 @@ func handleRoom(conn *websocket.Conn, roomId, userId string) {
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 				if room.user[0] != nil && room.user[0].conn != nil && room.user[1] != nil && room.user[1].conn != nil {
 					if room.user[0].userId == userId {
-						msg := fmt.Sprintf(room_response.Messages[1001], room.user[0].userId)
+						msg := room_response.Message{ Message: fmt.Sprintf(room_response.Messages[1001], room.user[0].userId) }
 						sendMessage(roomId, "", msg)
 						room.user[0].conn = nil
 						room.user[0].exit = make(chan bool)
 						handleTimeExit(room.user[0], room.user[1], roomId)
 					}
 					if room.user[1].userId == userId {
-						msg := fmt.Sprintf(room_response.Messages[1001], room.user[1].userId)
+						msg := room_response.Message{ Message: fmt.Sprintf(room_response.Messages[1001], room.user[0].userId) }
 						sendMessage(roomId, msg, "")
 						room.user[1].conn = nil
 						room.user[1].exit = make(chan bool)
@@ -53,7 +53,9 @@ func handleRoom(conn *websocket.Conn, roomId, userId string) {
 					}
 					break
 				}
-				rooms[roomId].timer <- false
+				if rooms[roomId].start && !rooms[roomId].finished {
+					rooms[roomId].timer <- false
+				}
 				close(rooms[roomId].timer)
 				delete(rooms, roomId)
 				log.Println(fmt.Sprintf("Room closed: %s", roomId))
@@ -99,7 +101,11 @@ func handleRoom(conn *websocket.Conn, roomId, userId string) {
 }
 
 func handlePlay(roomId string, play [2]int, player, nextToPlay int) bool {
-	if (rooms[roomId].matrix[play[0]][play[1]] != 0 || rooms[roomId].play != player) || (play[0] > width - 1 || play[1] > height - 1) || (play[0] != width - 1 && rooms[roomId].matrix[play[0]+1][play[1]] == 0) {
+	if 
+	(rooms[roomId].matrix[play[0]][play[1]] != 0 || rooms[roomId].play != player) || 
+	(play[0] > width - 1 || play[1] > height - 1) || 
+	(play[0] != width - 1 && rooms[roomId].matrix[play[0]+1][play[1]] == 0) || 
+	(!rooms[roomId].start) {
 		msg := room_response.Message{ Message: room_response.Messages[1010] }
 		sendMessage(roomId, msg, msg)
 		return false

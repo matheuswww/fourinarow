@@ -78,6 +78,7 @@ func createRoom(conn *websocket.Conn, userId, roomId string) error {
 		user: [2]*User{user},
 		timer: timer,
 		finished: false,
+		start: false,
 	}
 	rooms[roomId] = room
 	err := conn.WriteJSON(room_response.Message{ Message: fmt.Sprintf("Room_id: %s", roomId) })
@@ -121,10 +122,11 @@ func joinRoom(conn *websocket.Conn, roomId string, userId string) error {
 	num := rd.Intn(2) + 1
 	r.play = num
 	rooms[roomId] = r
-	timeToPlay := r.user[num - 1].userId
-	msg := room_response.Message{ Message: fmt.Sprintf(room_response.Messages[1008], timeToPlay) }
-	sendMessage(roomId, msg, msg)
-	go handleTimerStart(roomId)
+	go handleTimerStart(roomId, func() {
+		timeToPlay := r.user[num - 1].userId
+		msg := room_response.Message{ Message: fmt.Sprintf(room_response.Messages[1008], timeToPlay) }
+		sendMessage(roomId, msg, msg)
+	})
 	log.Println("JoinRoom id: ", roomId)
 	return nil
 }
