@@ -94,6 +94,9 @@ export default function Room({ ws,owner }: RoomProps) {
     if (ws) {
       const userId = window.localStorage.getItem("user_id")
       let hasWinner = false
+      ws.onclose = () => {
+        window.location.href = "/"
+      };
       ws.onmessage = (event: MessageEvent) => {
         try {
         const data = JSON.parse(event.data);

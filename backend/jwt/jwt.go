@@ -9,6 +9,10 @@ import (
 
 var ExpToken = time.Hour*4
 
+type Token struct {
+	Token string `json:"token"`
+}
+
 type User struct {
 	UserId string
 	jwt.StandardClaims
