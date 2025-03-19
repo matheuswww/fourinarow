@@ -3,6 +3,7 @@ import { SyntheticEvent, useState } from "react"
 import styles from "./form.module.css"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { basePath } from "@/api/path";
 
 
 interface Props {
@@ -22,7 +23,7 @@ export default function Form({ mode }: Props) {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8080/signup', {
+      const response = await fetch(basePath+'/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -74,7 +75,7 @@ export default function Form({ mode }: Props) {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8080/signin', {
+      const response = await fetch(basePath+'/signin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
