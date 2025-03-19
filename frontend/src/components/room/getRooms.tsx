@@ -18,9 +18,7 @@ export default function GetRooms({ setIsConnected, setWs, setOwner }: RoomCompon
     try {
       setLoading(true);
       const ws = await createRoom();
-      setTimeout(() => {
-        setWs(ws); 
-      },100);
+      setWs(ws); 
       setIsConnected(true);
       setOwner(true)
     } catch (error) {
@@ -42,9 +40,7 @@ export default function GetRooms({ setIsConnected, setWs, setOwner }: RoomCompon
   const handleConnectRoom = async (roomId: string) => {
     try {
       const ws = await connectRoom(roomId);
-      setTimeout(() => {
-        setWs(ws); 
-      },100);
+      setWs(ws); 
       setIsConnected(true);
     } catch (error) {
       console.error("Error connecting to room:", error);

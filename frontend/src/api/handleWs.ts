@@ -13,9 +13,5 @@ export function handleWs(ws: WebSocket, token: string): Promise<WebSocket> {
       console.error("WebSocket error:", error);
       reject(error);
     };
-
-    ws.onclose = () => {
-      console.log("WebSocket connection closed.");
-    };
   });
 }
