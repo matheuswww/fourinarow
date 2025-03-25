@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fourinarowfrontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fourinarowfrontend
+  template:
+    metadata:
+      labels:
+        app: fourinarowfrontend
+    spec:
+      containers:
+      - name: fourinarowfrontend
+        image: fourinarowfrontend:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+          requests:
+            cpu: "250m"
+            memory: "512Mi"

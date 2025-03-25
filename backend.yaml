@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fourinarowbackend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fourinarowbackend
+  template:
+    metadata:
+      labels:
+        app: fourinarowbackend
+    spec:
+      containers:
+      - name: fourinarowbackend
+        image: fourinarowbackend:latest
+        imagePullPolicy: Never
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+        ports:
+        - containerPort: 8080
